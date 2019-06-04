@@ -1,5 +1,9 @@
 package net.coconauts.notificationListener;
 
+import android.app.ActivityManager;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.pm.PackageManager;
 import android.view.Gravity;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
@@ -10,6 +14,10 @@ import android.util.Log;
 import org.apache.cordova.PluginResult;
 import android.service.notification.StatusBarNotification;
 import android.os.Bundle;
+
+import java.util.List;
+
+import static android.os.Process.myPid;
 
 public class NotificationCommands extends CordovaPlugin {
 
@@ -26,8 +34,10 @@ public class NotificationCommands extends CordovaPlugin {
     public boolean execute(String action, JSONArray args, final CallbackContext callbackContext) throws JSONException {
 
       Log.i(TAG, "Received action " + action);
+      Context context = this.cordova.getActivity();
 
       if (LISTEN.equals(action)) {
+        ensureCollectorRunning(context);
         setListener(callbackContext);
         return true;
       } else {
@@ -35,6 +45,39 @@ public class NotificationCommands extends CordovaPlugin {
         return false;
       }
     }
+
+
+    //确认NotificationMonitor是否开启
+    private void ensureCollectorRunning(Context context) {
+        ComponentName collectorComponent = new ComponentName(context, NotificationService.class);
+        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        boolean collectorRunning = false;
+        List<ActivityManager.RunningServiceInfo> runningServices = manager.getRunningServices(Integer.MAX_VALUE);
+        if (runningServices == null ) {
+            return;
+        }
+        for (ActivityManager.RunningServiceInfo service : runningServices) {
+            if (service.service.equals(collectorComponent)) {
+                if (service.pid == android.os.Process.myPid() ) {
+                    collectorRunning = true;
+                }
+            }
+        }
+        if (collectorRunning) {
+            return;
+        }
+        toggleNotificationListenerService(context);
+    }
+
+
+    //重新开启NotificationMonitor
+    private void toggleNotificationListenerService(Context context) {
+        ComponentName thisComponent = new ComponentName(context,  NotificationService.class);
+        PackageManager pm = context.getPackageManager();
+        pm.setComponentEnabledSetting(thisComponent, PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+        pm.setComponentEnabledSetting(thisComponent, PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
+    }
+    
 
     @Override
     public void onPause(boolean multitasking) {
