@@ -10,7 +10,7 @@ Note: This plugin doesn't work for IOS or Windows Phone, feel free to create a p
 
 ## How to install
 
-    cordova plugin add https://github.com/coconauts/NotificationListener-cordova
+    cordova plugin add https://github.com/lu-shaobin/NotificationListener-cordova
 
 ## Enable notification listener service
 
